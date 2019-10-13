@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+import pdb
 import os, sys
 import json
 import glob
@@ -14,35 +15,39 @@ from panopticapi.utils import IdGenerator, save_json
 try:
     # set up path for cityscapes scripts
     # sys.path.append('./cityscapesScripts/')
-    from cityscapesscripts.helpers.labels import labels, id2label
+    from anue_labels import labels, id2label
 except Exception:
     raise Exception("Please load Cityscapes scripts from https://github.com/mcordts/cityscapesScripts")
 
-original_format_folder = './gtFine/val/'
+original_format_folder = '/home/chrizandr/idd20kII/gtFine/val/'
 # folder to store panoptic PNGs
-out_folder = './cityscapes_data/cityscapes_panoptic_val/'
+out_folder = 'output/'
 # json with segmentations information
-out_file = './cityscapes_data/cityscapes_panoptic_val.json'
+out_file = 'cityscapes_panoptic_val.json'
+
 
 def panoptic_converter(original_format_folder, out_folder, out_file):
-
     if not os.path.isdir(out_folder):
         print("Creating folder {} for panoptic segmentation PNGs".format(out_folder))
         os.mkdir(out_folder)
 
     categories = []
+    added_cats = []
     for idx, el in enumerate(labels):
         if el.ignoreInEval:
             continue
-        categories.append({'id': el.id,
-                           'name': el.name,
-                           'color': el.color,
-                           'supercategory': el.category,
-                           'isthing': 1 if el.hasInstances else 0})
+        if el.level3Id not in added_cats:
+            # pdb.set_trace()
+            categories.append({'id': el.level3Id,
+                               'name': el.name,
+                               'color': el.color,
+                               'supercategory': el.level2IdName,
+                               'isthing': 1 if el.hasInstances else 0})
+            added_cats.append(el.level3Id)
 
     categories_dict = {cat['id']: cat for cat in categories}
 
-    file_list = sorted(glob.glob(os.path.join(original_format_folder, '*/*_gtFine_instanceIds.png')))
+    file_list = sorted(glob.glob(os.path.join(original_format_folder, '*/*_gtFine_instancelevel3Ids.png')))
 
     images = []
     annotations = []
@@ -51,10 +56,11 @@ def panoptic_converter(original_format_folder, out_folder, out_file):
             print(working_idx, len(file_list))
 
         original_format = np.array(Image.open(f))
-
+        print("Processing file", f)
         file_name = f.split('/')[-1]
         image_id = file_name.rsplit('_', 2)[0]
-        image_filename= '{}_leftImg8bit.png'.format(image_id)
+        image_filename= '{}_leftImg8bit.jpg'.format(image_id)
+        # pdb.set_trace()
         # image entry, id for image is its filename without extension
         images.append({"id": image_id,
                        "width": original_format.shape[1],
@@ -97,8 +103,8 @@ def panoptic_converter(original_format_folder, out_folder, out_file):
 
             segm_info.append({"id": int(segment_id),
                               "category_id": int(semantic_id),
-                              "area": area,
-                              "bbox": bbox,
+                              "area": int(area),
+                              "bbox": [int(x) for x in bbox],
                               "iscrowd": is_crowd})
 
         annotations.append({'image_id': image_id,
@@ -111,7 +117,6 @@ def panoptic_converter(original_format_folder, out_folder, out_file):
          'annotations': annotations,
          'categories': categories,
         }
-
     save_json(d, out_file)
 
 if __name__ == "__main__":
