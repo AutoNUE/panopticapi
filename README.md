@@ -3,7 +3,7 @@ This is adapted from [COCO 2018 Panoptic Segmentation Task API](http://cocodatas
 
 To install panopticapi, run:
 ```
-pip install git+https://github.com/cocodataset/panopticapi.git
+pip install git+https://github.com/AutoNUE/panopticapi.git
 ```
 
 ## Summary
